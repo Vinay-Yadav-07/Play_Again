@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String      @id @default(uuid())
+  name              String
+  email             String      @unique
+  passwordHash      String
+  role              String      @default("user")
+  avatarUrl         String?
+  isDemoUser        Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  listings          Listing[]
+  favourites        Favourite[]
+  enquiriesSent     Enquiry[]   @relation("BuyerEnquiries")
+  enquiriesReceived Enquiry[]   @relation("SellerEnquiries")
+  reports           Report[]
+
+  @@index([email])
+}
+
+model Listing {
+  id            String      @id @default(uuid())
+  ownerId       String
+  owner         User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  sport         String      // Cricket, Football, Badminton, Basketball, Tennis, Fitness, Other
+  listingType   String      // sale, swap, rent
+  condition     String      // Like New, Good, Fair
+  price         Float       @default(0)
+  rentalRate    Float?
+  rentalPeriod  String?     // e.g. "per day", "per week", "per weekend"
+  desiredSwap   String?     // item desired in exchange
+  images        String      // JSON array of image URLs or single string
+  pickupArea    String      // General campus area (e.g. "Student Activity Center", "North Hostel Ground")
+  availability  String      @default("available") // available, reserved, completed
+  isDemoListing Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  favourites    Favourite[]
+  enquiries     Enquiry[]
+  reports       Report[]
+
+  @@index([sport])
+  @@index([listingType])
+  @@index([availability])
+  @@index([ownerId])
+  @@index([createdAt])
+}
+
+model Favourite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+  @@index([userId])
+  @@index([listingId])
+}
+
+model Enquiry {
+  id            String   @id @default(uuid())
+  listingId     String
+  listing       Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId       String
+  buyer         User     @relation("BuyerEnquiries", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerId      String
+  seller        User     @relation("SellerEnquiries", fields: [sellerId], references: [id], onDelete: Cascade)
+  message       String
+  proposedOffer Float?
+  rentalDates   String?
+  status        String   @default("New") // New, Responded, Closed
+  response      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporterId  String
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason      String
+  details     String?
+  status      String   @default("Pending") // Pending, Reviewed, Resolved, Dismissed
+  createdAt   DateTime @default(now())
+
+  @@index([listingId])
+  @@index([reporterId])
+}
